@@ -2,6 +2,9 @@
  Komunikacja pomiędzy klientami poprzez serwer (2:1), w oparciu o autorski protokół tekstowy.
  Protokół połączeniowy, wszystkie dane przesyłane w postaci tekstowej (sekwencja znaków ASCII).
  
+ Dwóch klientów gra ze sobą za pomocą serwera. Serwer losuje liczbę L z przedziału (a; b), klienci znają
+ przedział i próbują prześcignąć się w zgadnięciu liczby L - serwer odpowiada im wskazówkami "mniej"/"więcej".
+ 
 Format komunikatu:
 ^1::Pole{wartosc}+^2::Pole{wartosc}+ …
 

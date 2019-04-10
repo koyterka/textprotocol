@@ -1,26 +1,27 @@
 # textprotocol
  Komunikacja pomiędzy klientami poprzez serwer (2:1), w oparciu o autorski protokół tekstowy.
- 
  Protokół połączeniowy, wszystkie dane przesyłane w postaci tekstowej (sekwencja znaków ASCII).
  
 Format komunikatu:
 ^1::Pole{wartosc}+^2::Pole{wartosc}+ …
-
 np. ^1::Oper{Nadanie Id}+^2::Id{2367}+^3::Czas{13:45:27}+
 
+
 Pola: (* - pole obowiązkowe)
+
    ● Czas
+   
    ● Oper * - operacja, którą wykonuje klient lub serwer przesyłając komunikat:
    
 ○ Nadanie Id - serwer wysyła Id klientowi;
 
-○ Wysłanie L - klient wysyła do serwera liczbę L;
+     ○ Wysłanie L - klient wysyła do serwera liczbę L;
 
-○ Wysłanie przedziału - serwer wysyła do klienta przedział, w którym zawiera się wylosowana przez niego liczba;
+     ○ Wysłanie przedziału - serwer wysyła do klienta przedział, w którym zawiera się wylosowana przez niego liczba;
 
-○ Wysłanie strzału - klient wysyła do serwera liczbę, którą podejrzewa o bycie wylosowaną;
+     ○ Wysłanie strzału - klient wysyła do serwera liczbę, którą podejrzewa o bycie wylosowaną;
 
-○ Wysłanie odpowiedzi - serwer wysyła do klienta odpowiedź o przegranej/wygranej lub podpowiedź na temat wylosowanej liczby.
+     ○ Wysłanie odpowiedzi - serwer wysyła do klienta odpowiedź o przegranej/wygranej lub podpowiedź na temat wylosowanej liczby.
 
 ● Id * - identyfikator sesji;
 ● Przedział - przedział liczbowy wyznaczany przez serwer - znajduje się
@@ -28,13 +29,13 @@ wylosowana przez niego liczba, którą musi odgadnąć klient.
 ● Strzał - strzał, który klient wysyła do serwera.
 ● Odp * - odpowiedź serwera do klienta:
 
-○ Wygrana - klient wygrał grę;
+     ○ Wygrana - klient wygrał grę;
 
-○ Przegrana - klient przegrał grę;
+     ○ Przegrana - klient przegrał grę;
 
-○ Odejmij - liczba wylosowana przez serwer jest mniejsza niż strzał klienta;
+     ○ Odejmij - liczba wylosowana przez serwer jest mniejsza niż strzał klienta;
 
-○ Dodaj - liczba wylosowana przez serwer jest większa niż strzał klienta.
+     ○ Dodaj - liczba wylosowana przez serwer jest większa niż strzał klienta.
 
 Schemat sesji komunikacyjnej:
 1. Dwóch klientów łączy się z serwerem, każdy z nich dostaje od serwera

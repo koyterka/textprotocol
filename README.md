@@ -17,7 +17,7 @@ Pola: (* - pole obowiązkowe)
    
    ● Oper * - operacja, którą wykonuje klient lub serwer przesyłając komunikat:
    
-○ Nadanie Id - serwer wysyła Id klientowi;
+     ○ Nadanie Id - serwer wysyła Id klientowi;
 
      ○ Wysłanie L - klient wysyła do serwera liczbę L;
 

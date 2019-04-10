@@ -4,6 +4,7 @@
  
 Format komunikatu:
 ^1::Pole{wartosc}+^2::Pole{wartosc}+ …
+
 np. ^1::Oper{Nadanie Id}+^2::Id{2367}+^3::Czas{13:45:27}+
 
 
@@ -17,16 +18,21 @@ Pola: (* - pole obowiązkowe)
 
      ○ Wysłanie L - klient wysyła do serwera liczbę L;
 
-     ○ Wysłanie przedziału - serwer wysyła do klienta przedział, w którym zawiera się wylosowana przez niego liczba;
+     ○ Wysłanie przedziału - serwer wysyła do klienta przedział, w którym zawiera 
+     się wylosowana przez niego liczba;
 
      ○ Wysłanie strzału - klient wysyła do serwera liczbę, którą podejrzewa o bycie wylosowaną;
 
-     ○ Wysłanie odpowiedzi - serwer wysyła do klienta odpowiedź o przegranej/wygranej lub podpowiedź na temat wylosowanej liczby.
+     ○ Wysłanie odpowiedzi - serwer wysyła do klienta odpowiedź o przegranej/wygranej 
+     lub podpowiedź na temat wylosowanej liczby.
 
 ● Id * - identyfikator sesji;
+
 ● Przedział - przedział liczbowy wyznaczany przez serwer - znajduje się
 wylosowana przez niego liczba, którą musi odgadnąć klient.
+
 ● Strzał - strzał, który klient wysyła do serwera.
+
 ● Odp * - odpowiedź serwera do klienta:
 
      ○ Wygrana - klient wygrał grę;

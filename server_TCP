@@ -1,0 +1,266 @@
+#include "pch.h"
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#pragma warning (disable:4996)
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <iostream>
+#include <ctime>
+#include <cstdlib>
+#include <thread>
+#include <string>
+#include <random>
+#include "packet.h"
+
+#pragma comment (lib,"Ws2_32.lib")
+
+//pomocnicze zmienne
+int SecretNumber, L1, L2, id = 1;
+std::string przedzial = "";
+int wygrana = 0;
+//losowa liczba do zgadniecia
+int randomnumber(int l1, int l2) {
+	static std::default_random_engine e{};
+	std::uniform_int_distribution<int> d(l1, l2);
+	return d(e);
+}
+//funkcja pokazujaca aktualny czas
+std::string getTime() {
+	time_t t = time(0);
+	struct tm* now = localtime(&t);
+
+	std::string tmp = "";
+	tmp += std::to_string(now->tm_mday);
+	tmp += ".";
+	tmp += std::to_string(now->tm_mon + 1);
+	tmp += ".";
+	tmp += std::to_string(now->tm_year + 1900);
+	tmp += " ";
+	tmp += std::to_string(now->tm_hour);
+	tmp += ":";
+	tmp += std::to_string(now->tm_min);
+	tmp += ":";
+	tmp += std::to_string(now->tm_sec);
+
+	return tmp;
+}
+//funkcja uzywana przez watki do komunikacji z klientami
+void TakeCareOfClient(SOCKET cl,SOCKET cl2, int id) {
+	//wyslanie wylosowanego przedzialu
+	packet p1(std::to_string(id), getTime(), "Wyslanie przedzialu", "", "", przedzial);
+	std::string wylosprzedzial = p1.pakiet;
+	send(cl, wylosprzedzial.c_str(), wylosprzedzial.size(), 0);
+	//std::cout << wylosprzedzial << std::endl;
+	
+	//rozpoczecie zgadywania po wyslaniu obliczonego przedzialu
+	char buff[120];
+	
+	while (wygrana == 0) {
+		//odebranie liczby
+		ZeroMemory(buff, 120);
+		recv(cl, buff, 120, 0);
+
+		packet pomocniczy;
+		pomocniczy.pakiet = buff;
+		pomocniczy.unpack();
+		std::cout << pomocniczy.pakiet << std::endl; //wyswietlenie otrzymanego pakietu
+		std::string sendit;
+		int tmp = std::stoi(pomocniczy.strzal);
+		//jezeli klient podal poprawna liczbe
+		if (tmp == SecretNumber) {
+			std::cout << "Klient " << id << " zgadl poprawna liczbe: " << SecretNumber << std::endl;
+			if (wygrana > 0) {
+				std::cout << "Ale za pozno... \n";
+			}
+			packet win(std::to_string(id), getTime(), "Wyslanie odpowiedzi", "Wygrana", "", "");
+			sendit = win.pakiet;
+			send(cl, sendit.c_str(), sendit.size(), 0);
+			wygrana += 1;
+			
+			//wysylanie do drugiego klienta informacji o przegranej, odbierze ja po wyslaniu swojej kolejnej proby, ktora nie bedzie uznana
+			packet przegrana(std::to_string(id), getTime(), "Wyslanie odpowiedzi", "Przegrana", std::to_string(SecretNumber), "");
+			std::string p = przegrana.pakiet;
+			send(cl2, p.c_str(), p.size(), 0);
+			break;
+		}
+		//jezeli podana liczba jest wieksza od wylosowanej - podpowiedz
+		else if (tmp > SecretNumber) {
+			packet cont(std::to_string(id), getTime(), "Wyslanie odpowiedzi", "Odejmij", "", "");
+			sendit = cont.pakiet;
+			send(cl, sendit.c_str(), sendit.size(), 0);
+		}
+		//jezeli podana liczba jest mniejsza od wylosowanej - podpowiedz
+		else if (tmp < SecretNumber) {
+			packet cont(std::to_string(id), getTime(), "Wyslanie odpowiedzi", "Dodaj", "", "");
+			sendit = cont.pakiet;
+			send(cl, sendit.c_str(), sendit.size(), 0);
+		}
+		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	
+	packet przegrana(std::to_string(id), getTime(), "Wyslanie odpowiedzi", "Przegrana", std::to_string(SecretNumber), "");
+	std::string p = przegrana.pakiet;
+	send(cl, p.c_str(), p.size(), 0);
+	//closesocket(cl);
+	//WSACleanup();
+	//std::this_thread::yield();
+}
+
+
+int main()
+{	
+	//czas wlaczenia serwera
+	std::string tmp = getTime();
+	std::cout << "Serwer uruchomiony- " << tmp << std::endl;
+	//inicjalizacja winsocka
+	WSADATA wsData;
+	WORD ver = MAKEWORD(2, 2);
+
+	int wsOK = WSAStartup(ver, &wsData);
+	if (wsOK != 0) {
+		std::cerr << "Nie mozna zainicjalizowac polaczenia \n";
+		return 1;
+	}
+	//tworzenie socketu nasłuchiwania
+	SOCKET listening = socket(AF_INET, SOCK_STREAM, 0);
+	if (listening == INVALID_SOCKET) {
+		std::cerr << "Nie mozna utworzyc socketu do nasluchiwania \n";
+		return 1;
+	}
+	//łączenie adresu ip i portu do socketu
+	sockaddr_in hint;
+	hint.sin_family = AF_INET;
+	hint.sin_port = htons(27656);
+	hint.sin_addr.S_un.S_addr = INADDR_ANY;
+	int hintsize = sizeof(hint);
+
+	bind(listening, (sockaddr*)&hint, sizeof(hint));
+
+	//nasłuchiwanie
+	listen(listening, SOMAXCONN);
+	
+	//socket klienta1
+	sockaddr_in client1;
+	int clientSize = sizeof(client1);
+
+	SOCKET client1Socket = accept(listening, (sockaddr*)&client1, &clientSize);
+	char host[NI_MAXHOST];
+	char service[NI_MAXSERV];
+
+	ZeroMemory(host, NI_MAXHOST);
+	ZeroMemory(service, NI_MAXSERV);
+
+	if (getnameinfo((sockaddr*)&client1, sizeof(client1), host, NI_MAXHOST, service, NI_MAXSERV, 0) == 0) {
+		std::cout << host << " polaczony na porcie " << service << std::endl;
+	}
+	else {
+		inet_ntop(AF_INET, &client1.sin_addr, host, NI_MAXHOST);
+		std::cout << host << " polaczony na porcie " << ntohs(client1.sin_port) << std::endl;
+	}
+	//wysłanie identyfikatora do pierwszego klienta
+	char buff[120];
+	ZeroMemory(buff, 120);
+
+	packet p1(std::to_string(id), getTime(), "Nadanie Id", "", "", "");
+	std::string tosend = p1.pakiet;
+	send(client1Socket, tosend.c_str(),tosend.size(),0);
+
+	std::cout << "Wyslano identyfikator do klienta, ID:" << id << std::endl;
+	//p1.display();
+
+	id+=1;
+
+	//socket klienta2
+	sockaddr_in client2;
+	int client2Size = sizeof(client2);
+
+	SOCKET client2Socket = accept(listening, (sockaddr*)&client2, &client2Size);
+	char host2[NI_MAXHOST];
+	char service2[NI_MAXSERV];
+
+	ZeroMemory(host2, NI_MAXHOST);
+	ZeroMemory(service2, NI_MAXSERV);
+
+	if (getnameinfo((sockaddr*)&client2, sizeof(client2), host2, NI_MAXHOST, service2, NI_MAXSERV, 0) == 0) {
+		std::cout << host << " polaczony na porcie " << service << std::endl;
+	}
+	else {
+		inet_ntop(AF_INET, &client2.sin_addr, host, NI_MAXHOST);
+		std::cout << host << " polaczony na porcie " << ntohs(client2.sin_port) << std::endl;
+	}
+	//wysłanie identyfikatora do drugiego klienta
+	ZeroMemory(buff, 120);
+	packet p2(std::to_string(id), getTime(), "Nadanie Id", "", "", "");
+	std::string tosend2 = p2.pakiet;
+	send(client2Socket, tosend2.c_str(), tosend2.size(), 0);
+
+	std::cout << "Wyslano identyfikator do klienta, ID:" << id << std::endl;
+	//p2.display();
+
+	//odebranie liczby L1 od klienta 1
+	ZeroMemory(buff, 120);
+	int reply1 = recv(client1Socket, buff, 120, 0);
+	if (reply1 == SOCKET_ERROR) { //błąd socketu
+		std::cerr << "Blad w recv\n";
+		return 1;
+	}
+	if (reply1 == 0) { //rozłączenie się ze strony klienta
+		std::cout << "Klient sie rozlaczyl\n";
+		return 1;
+	}
+	packet liczba1;
+	liczba1.pakiet = buff;
+	std::cout << liczba1.pakiet << std::endl;
+	liczba1.unpack();
+	L1 = std::stoi(liczba1.strzal);
+	
+	//odebranie liczby L2 od klienta 2
+	ZeroMemory(buff, 120);
+	int reply2 = recv(client2Socket, buff, 120, 0);
+	if (reply2 == SOCKET_ERROR) { //błąd socketu
+		std::cerr << "Blad w recv\n";
+		return 1;
+	}
+	if (reply2 == 0) { //rozłączenie się ze strony klienta
+		std::cout << "Klient sie rozlaczyl\n";
+		return 1;
+	}
+	packet liczba2;
+	liczba2.pakiet = buff;
+	std::cout << liczba2.pakiet << std::endl;
+	liczba2.unpack();
+	L2 = std::stoi(liczba2.strzal);
+
+	//wylosowanie sekretnego numeru i sprawdzenie, czy losowany przedzial jest poprawny
+	if (L1 > L2) {
+		int tmp = L2;
+		L2 = L1;
+		L1 = tmp;
+	}
+	int h1 = L1 - L2;
+	int h2 = L1 + L2;
+	SecretNumber = randomnumber(h1, h2);
+
+	przedzial += std::to_string(h1);
+	przedzial += ";";
+	przedzial += std::to_string(h2);
+
+	std::cout << "Liczba L1: " << L1 << " Liczba L2: " << L2 << std::endl;
+	std::cout << "Obliczony przedzial <" << przedzial << ">\n";
+	std::cout << "Wylosowana tajna liczba do zgadniecia: " << SecretNumber << std::endl;
+
+	//uruchomienie watkow dla klientow
+	std::thread th1(TakeCareOfClient,client1Socket,client2Socket,1);
+	std::thread th2(TakeCareOfClient,client2Socket,client1Socket,2);
+	th1.join();
+	th2.join();
+
+	//zamykanie i czyszczenie 
+	closesocket(client1Socket);
+	closesocket(client2Socket);
+	WSACleanup();
+	
+	std::cout << "\n Koniec gry \n";
+	system("PAUSE");
+
+	return 0;
+}
